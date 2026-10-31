@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "Riff – Save Guitar Tabs",
+  "short_name": "Riff",
+  "version": "0.1.0",
+  "description": "Save the guitar tab you're looking at to your Riff library in one click.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Save to Riff",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": { "default": "Alt+Shift+R" },
+      "description": "Save this page to Riff"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "scripts": ["background.js"],
+    "type": "module"
+  },
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["http://127.0.0.1:47813/*"],
+  "browser_specific_settings": {
+    "gecko": { "id": "riff@riff.app", "strict_min_version": "121.0" }
+  }
+}

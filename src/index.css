@@ -1,0 +1,188 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens. Light/dark follow the system appearance.
+ * In the Tauri window the sidebar is transparent so macOS vibrancy shows
+ * through; in a plain browser (vite dev) it falls back to a solid color.
+ */
+:root {
+  --bg: #ffffff;
+  --bg-sidebar: #ececee;
+  --bg-elevated: #ffffff;
+  --bg-hover: rgb(0 0 0 / 0.045);
+  --bg-subtle: rgb(0 0 0 / 0.035);
+  --bg-row-alt: rgb(0 0 0 / 0.022);
+  --bg-selected-inactive: rgb(0 0 0 / 0.085);
+  --bg-sidebar-selected: rgb(0 0 0 / 0.085);
+  --fg: #1d1d1f;
+  --fg-muted: #6e6e73;
+  --fg-faint: #a1a1a6;
+  --border: rgb(0 0 0 / 0.1);
+  --border-strong: rgb(0 0 0 / 0.16);
+  --accent: #e2602a;
+  --accent-hover: #cf5420;
+  --accent-fg: #ffffff;
+  --accent-soft: rgb(226 96 42 / 0.12);
+  --star: #f2a516;
+  --danger: #d93a32;
+  --ring: rgb(226 96 42 / 0.45);
+  --shadow-pop: 0 10px 30px -8px rgb(0 0 0 / 0.25), 0 0 0 0.5px rgb(0 0 0 / 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1e1e20;
+    --bg-sidebar: #28282b;
+    --bg-elevated: #2a2a2d;
+    --bg-hover: rgb(255 255 255 / 0.05);
+    --bg-subtle: rgb(255 255 255 / 0.05);
+    --bg-row-alt: rgb(255 255 255 / 0.025);
+    --bg-selected-inactive: rgb(255 255 255 / 0.1);
+    --bg-sidebar-selected: rgb(255 255 255 / 0.1);
+    --fg: #ececee;
+    --fg-muted: #9a9aa0;
+    --fg-faint: #67676d;
+    --border: rgb(255 255 255 / 0.09);
+    --border-strong: rgb(255 255 255 / 0.16);
+    --accent: #ef7339;
+    --accent-hover: #f5854f;
+    --accent-fg: #ffffff;
+    --accent-soft: rgb(239 115 57 / 0.18);
+    --star: #f5b335;
+    --danger: #ff5a52;
+    --ring: rgb(239 115 57 / 0.5);
+    --shadow-pop: 0 12px 34px -8px rgb(0 0 0 / 0.6), 0 0 0 0.5px rgb(255 255 255 / 0.12);
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-sidebar: var(--bg-sidebar);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-hover: var(--bg-hover);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-bg-row-alt: var(--bg-row-alt);
+  --color-bg-selected-inactive: var(--bg-selected-inactive);
+  --color-bg-sidebar-selected: var(--bg-sidebar-selected);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-faint: var(--fg-faint);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-star: var(--star);
+  --color-danger: var(--danger);
+  --color-ring: var(--ring);
+  --shadow-pop: var(--shadow-pop);
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--fg);
+  background: var(--bg-sidebar);
+  -webkit-font-smoothing: antialiased;
+  /* Desktop apps don't select UI text on drag. Inputs opt back in. */
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+  overflow: hidden;
+}
+
+html.tauri body {
+  background: transparent;
+}
+
+input,
+textarea,
+[contenteditable='true'],
+.selectable {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+button {
+  cursor: default;
+}
+
+:focus-visible {
+  outline: none;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+/* Thin, unobtrusive scrollbars. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-color: var(--border-strong);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes flash {
+  0%,
+  40% {
+    background-color: var(--accent-soft);
+  }
+}
+
+.animate-pop-in {
+  animation: pop-in 120ms ease-out;
+}
+.animate-toast-in {
+  animation: toast-in 160ms ease-out;
+}
+.animate-flash {
+  animation: flash 1.6s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pop-in,
+  .animate-toast-in,
+  .animate-flash {
+    animation: none;
+  }
+}
