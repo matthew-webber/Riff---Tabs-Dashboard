@@ -11,6 +11,7 @@
   --star: #f2a516;
   --ok: #2f9e44;
   --warn: #c2410c;
+  --danger: #d93a32;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -26,6 +27,7 @@
     --star: #f5b335;
     --ok: #51cf66;
     --warn: #fb923c;
+    --danger: #ff6b63;
   }
 }
 * {
@@ -201,6 +203,27 @@ kbd {
   background: var(--accent-soft);
   color: var(--fg);
 }
+.remove {
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--danger);
+  padding: 3px 8px;
+  margin-left: -8px;
+  border-radius: 5px;
+}
+.remove:hover:not(:disabled) {
+  background: rgb(217 58 50 / 0.1);
+}
+.remove:disabled {
+  opacity: 0.5;
+}
+.remove[hidden],
+.hint[hidden] {
+  display: none;
+}
+.remove:focus-visible,
 .discard:focus-visible {
   outline: 2px solid var(--ring);
 }

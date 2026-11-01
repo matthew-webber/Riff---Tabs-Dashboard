@@ -18,12 +18,15 @@ struct AppState {
 
 type CmdResult<T> = Result<T, String>;
 
-/// Emitted to the frontend when a tab was saved from outside the app
-/// (browser extension or riff:// link).
+/// Emitted to the frontend when the library was changed from outside the
+/// app (browser extension or riff:// link).
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExternalChange {
-    pub tab_id: i64,
+    /// "saved" or "removed".
+    pub kind: &'static str,
+    /// The tab as saved, or as it was just before removal (so the UI can offer undo).
+    pub tab: Tab,
     pub created: bool,
     pub source: &'static str,
 }
@@ -112,7 +115,7 @@ fn handle_deep_link(app: &AppHandle, link: &url::Url) {
             }
             let result = app.state::<AppState>().lib.lock().unwrap().save(input);
             match result {
-                Ok(saved) => notify(app, ExternalChange { tab_id: saved.tab.id, created: saved.created, source: "link" }),
+                Ok(saved) => notify(app, ExternalChange { kind: "saved", tab: saved.tab, created: saved.created, source: "link" }),
                 Err(e) => log::warn!("Ignoring riff link {link}: {e}"),
             }
         }

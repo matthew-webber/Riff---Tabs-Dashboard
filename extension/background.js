@@ -19,6 +19,11 @@ chrome.runtime.onConnect.addListener((port) => {
       session.skip = !!msg.unchanged
     } else if (msg.type === 'discard') {
       session.discarded = true
+    } else if (msg.type === 'resume') {
+      session.discarded = false
+    } else if (msg.type === 'removed') {
+      session.discarded = true
+      flashBadge(session.draft?.tabId, '✕', '#6e6e73')
     }
   })
 

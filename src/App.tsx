@@ -52,22 +52,6 @@ export default function App() {
       .finally(() => setLoaded(true))
   }, [fail])
 
-  // Tabs saved from the browser extension / riff:// links.
-  useEffect(() => {
-    const un = api.onExternalChange(async (change) => {
-      const list = await api.listTabs()
-      setTabs(list)
-      const tab = list.find((t) => t.id === change.tabId)
-      if (!tab) return
-      setSelectedId(tab.id)
-      setFlashId(tab.id)
-      showToast({ message: `${change.created ? 'Saved' : 'Updated'} “${tab.title || 'Untitled'}” from your browser` })
-    })
-    return () => {
-      un.then((f) => f())
-    }
-  }, [showToast])
-
   const counts = useMemo(() => sidebarCounts(tabs, presets), [tabs, presets])
   const tuningsInUse = useMemo(() => counts.tunings.flatMap((t) => (t.name ? [t.name] : [])), [counts])
   const allTags = useMemo(() => counts.tags.map((t) => t.name), [counts])
@@ -170,6 +154,27 @@ export default function App() {
   useEffect(() => {
     handlers.current = { toggleFavorite, editTab, restore, selectView, focusSearch }
   })
+
+  // Tabs saved or removed from the browser extension / riff:// links.
+  useEffect(() => {
+    const un = api.onExternalChange(async (change) => {
+      const list = await api.listTabs()
+      setTabs(list)
+      const name = `“${change.tab.title || 'Untitled'}”`
+      if (change.kind === 'removed') {
+        setUndo(change.tab)
+        showToast({ message: `Removed ${name} from your browser`, action: { label: 'Undo', run: () => handlers.current.restore(change.tab) } })
+        return
+      }
+      if (!list.some((t) => t.id === change.tab.id)) return
+      setSelectedId(change.tab.id)
+      setFlashId(change.tab.id)
+      showToast({ message: `${change.created ? 'Saved' : 'Updated'} ${name} from your browser` })
+    })
+    return () => {
+      un.then((f) => f())
+    }
+  }, [showToast])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

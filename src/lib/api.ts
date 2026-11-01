@@ -38,7 +38,9 @@ export interface Meta {
 }
 
 export interface ExternalChange {
-  tabId: number
+  kind: 'saved' | 'removed'
+  /** The saved tab, or the tab as it was just before removal. */
+  tab: Tab
   created: boolean
   source: 'extension' | 'link'
 }

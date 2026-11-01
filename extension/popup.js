@@ -49,6 +49,26 @@ function finish() {
   window.close()
 }
 
+/** Delete this page's entry from the library, then close without saving. */
+async function remove() {
+  const btn = $('remove')
+  btn.disabled = true
+  btn.textContent = 'Removing…'
+  // Stop the background from re-saving if the popup closes mid-request.
+  port?.postMessage({ type: 'discard' })
+  try {
+    await api(`/tabs?url=${encodeURIComponent(draft.url)}`, { method: 'DELETE', timeout: 3000 })
+    port?.postMessage({ type: 'removed' })
+    closing = true
+    window.close()
+  } catch (e) {
+    port?.postMessage({ type: 'resume' })
+    btn.disabled = false
+    btn.textContent = 'Remove from Riff'
+    setStatus(`Couldn’t remove it: ${e.message || 'Riff isn’t responding'}`, 'warn')
+  }
+}
+
 function discard() {
   port?.postMessage({ type: 'discard' })
   closing = true
@@ -161,6 +181,7 @@ $('tagbox').addEventListener('mousedown', (e) => {
 })
 
 $('discard').addEventListener('click', discard)
+$('remove').addEventListener('click', remove)
 
 // Enter anywhere (outside a pending tag) saves and closes.
 $('form').addEventListener('submit', (e) => {
@@ -219,6 +240,8 @@ async function init() {
       draft.favorite = existing.favorite
       setStatus('✓ Already in your Riff library — edits save when you close this.', 'ok')
       $('discard').textContent = 'Undo Changes'
+      $('hint').hidden = true
+      $('remove').hidden = false
     } else {
       setStatus('Saves to Riff when you close this.')
     }

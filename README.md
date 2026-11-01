@@ -38,13 +38,13 @@ The library lives at `~/Library/Application Support/app.riff.desktop/riff.sqlite
 2. Click **Load unpacked** and choose the `extension/` folder.
 3. Pin the Riff button. The keyboard shortcut is **⌥⇧R**; you can change it at `chrome://extensions/shortcuts`.
 
-On a tab page, click the button. The popup fills in title, artist and tuning when it can work them out, and saves **when it closes**: click away, press Esc or press ↩. To skip saving, press **Discard**. If the URL is already in your library, the popup shows the saved entry and saves any edits you make.
+On a tab page, click the button. The popup fills in title, artist and tuning when it can work them out, and saves **when it closes**: click away, press Esc or press ↩. To skip saving, press **Discard**. If the URL is already in your library, the popup shows the saved entry and saves any edits you make. It also shows a **Remove from Riff** button, which deletes the entry and closes the popup. Riff then shows a toast with **Undo**, in case it was a misclick.
 
 ### How the extension talks to the app
 
 | Riff state | Transport | Behavior |
 | --- | --- | --- |
-| Running (window open or closed) | `POST http://127.0.0.1:47813/api/tabs` | Silent. The badge shows ✓ and the app shows a toast. |
+| Running (window open or closed) | `POST` / `DELETE http://127.0.0.1:47813/api/tabs` | Silent. The badge shows ✓ and the app shows a toast. |
 | Not running | `riff://add?url=…&title=…` | macOS launches Riff, which saves the tab. Chrome asks once whether to open Riff links. |
 
 The plan called for the `riff:` URI scheme only. I added the loopback API as the main channel because the URI scheme alone can't:

@@ -74,7 +74,7 @@ fn handle(mut req: Request, lib: &Arc<Mutex<Library>>, on_change: &impl Fn(Exter
     if *req.method() == Method::Options {
         let res = Response::empty(204)
             .with_header(h("Access-Control-Allow-Origin", cors.unwrap_or("null")))
-            .with_header(h("Access-Control-Allow-Methods", "GET, POST, OPTIONS"))
+            .with_header(h("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS"))
             .with_header(h("Access-Control-Allow-Headers", "Content-Type, X-Riff-Client"))
             .with_header(h("Access-Control-Max-Age", "600"));
         let _ = req.respond(res);
@@ -128,10 +128,31 @@ fn handle(mut req: Request, lib: &Arc<Mutex<Library>>, on_change: &impl Fn(Exter
             let result = lib.lock().unwrap().save(input);
             match result {
                 Ok(saved) => {
-                    on_change(ExternalChange { tab_id: saved.tab.id, created: saved.created, source: "extension" });
-                    respond(req, 200, json!(saved), cors)
+                    let body = json!(saved);
+                    on_change(ExternalChange { kind: "saved", tab: saved.tab, created: saved.created, source: "extension" });
+                    respond(req, 200, body, cors)
                 }
                 Err(e) => respond(req, 422, json!({ "error": e }), cors),
+            }
+        }
+
+        // Remove the tab saved for a URL. Returns the removed tab (or null).
+        (Method::Delete, "/api/tabs") => {
+            let url = param("url").unwrap_or_default();
+            let result = {
+                let mut lib = lib.lock().unwrap();
+                match lib.find_by_url(&url) {
+                    Ok(Some(tab)) => lib.delete(tab.id).map(|_| Some(tab)),
+                    other => other,
+                }
+            };
+            match result {
+                Ok(Some(tab)) => {
+                    on_change(ExternalChange { kind: "removed", tab: tab.clone(), created: false, source: "extension" });
+                    respond(req, 200, json!({ "removed": tab }), cors)
+                }
+                Ok(None) => respond(req, 200, json!({ "removed": null }), cors),
+                Err(e) => respond(req, 500, json!({ "error": e }), cors),
             }
         }
 
