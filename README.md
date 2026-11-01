@@ -38,7 +38,7 @@ The library lives at `~/Library/Application Support/app.riff.desktop/riff.sqlite
 2. Click **Load unpacked** and choose the `extension/` folder.
 3. Pin the Riff button. The keyboard shortcut is **⌥⇧R**; you can change it at `chrome://extensions/shortcuts`.
 
-On a tab page, click the button. The popup fills in title, artist and tuning when it can work them out, and saves **when it closes**: click away, press Esc or press ↩. To skip saving, press **Discard**. If the URL is already in your library, the popup shows the saved entry and saves any edits you make. It also shows a **Remove from Riff** button, which deletes the entry and closes the popup. Riff then shows a toast with **Undo**, in case it was a misclick.
+On a tab page, click the button. The popup fills in title, artist and tuning when it can work them out (the tuning uses Riff's name for it, so `EADGBe` shows as **Standard**; a new tab with no tuning on the page defaults to Standard), and saves **when it closes**: click away, press Esc or press ↩. To skip saving, press **Discard**. If the URL is already in your library, the popup shows the saved entry and saves any edits you make. It also shows a **Remove from Riff** button, which deletes the entry and closes the popup. Riff then shows a toast with **Undo**, in case it was a misclick.
 
 ### How the extension talks to the app
 
@@ -92,6 +92,8 @@ Riff stores tunings in canonical form. All of these become **Eb Standard**:
 - `D# G# C# F# A# D#`
 - `half step down`
 - `E♭ standard`
+
+Pickers list the common tunings first, then less common ones (Drop Bb, Double Drop D, Open A, 7-String Drop A…) alphabetically, then any custom tunings in your library.
 
 Note sequences are compared by pitch class, so enharmonic spellings match. A sequence that matches no preset is kept as a custom tuning (`C G C G G C`). An unknown name (`Nashville`) is kept as you typed it. To add presets, edit `PRESETS` in `src-tauri/src/tuning.rs`.
 

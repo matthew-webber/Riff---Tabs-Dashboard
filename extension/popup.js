@@ -114,17 +114,129 @@ function renderTags() {
   input.placeholder = draft.tags.length ? '' : 'Add tags…'
 }
 
-function fillDatalists(meta) {
-  const tunings = $('tunings')
-  tunings.replaceChildren()
-  const seen = new Set()
-  for (const p of meta.presets ?? PRESET_TUNINGS) {
-    seen.add(p.name)
-    tunings.append(new Option(p.notes, p.name))
-  }
-  for (const t of meta.tuningsInUse ?? []) if (!seen.has(t)) tunings.append(new Option('custom', t))
+function fillSuggestions(meta) {
+  const presets = meta.presets ?? PRESET_TUNINGS
+  tuningOptions = [
+    ...presets.map((p) => ({ value: p.name, detail: p.notes, notes: p.notes, group: p.common === false ? 'more' : 'common' })),
+    ...(meta.tuningsInUse ?? []).filter((t) => !presets.some((p) => p.name === t)).map((t) => ({ value: t, detail: 'custom', notes: '', group: 'custom' })),
+  ]
+  if (!$('tuning-menu').hidden) openMenu()
   const tags = $('tag-list')
   tags.replaceChildren(...(meta.tags ?? []).map((t) => new Option('', t)))
+}
+
+// ---------- tuning combobox ----------
+// Common tunings, a separator, then less common ones A–Z, then custom
+// tunings already in the library. Typing filters by name or notes.
+
+let tuningOptions = []
+let shown = []
+let active = -1
+const squash = (s) => s.toLowerCase().replace(/♭/g, 'b').replace(/♯/g, '#').replace(/[\s,\-/|]+/g, '')
+
+function openMenu() {
+  const input = $('tuning')
+  const menu = $('tuning-menu')
+  const q = squash(input.value)
+  shown =
+    !q || tuningOptions.some((o) => o.value === input.value)
+      ? tuningOptions
+      : tuningOptions.filter((o) => squash(o.value).includes(q) || (o.notes && squash(o.notes).startsWith(q)))
+  if (active >= shown.length) active = shown.length - 1
+  menu.replaceChildren()
+  shown.forEach((o, i) => {
+    if (i > 0 && o.group !== shown[i - 1].group) {
+      const sep = document.createElement('div')
+      sep.className = 'sep'
+      sep.setAttribute('role', 'separator')
+      menu.append(sep)
+    }
+    const el = document.createElement('div')
+    el.className = 'option'
+    el.id = `tuning-option-${i}`
+    el.dataset.index = i
+    el.setAttribute('role', 'option')
+    const name = document.createElement('span')
+    name.textContent = o.value
+    const detail = document.createElement('span')
+    detail.className = 'detail'
+    detail.textContent = o.detail
+    el.append(name, detail)
+    menu.append(el)
+  })
+  menu.hidden = shown.length === 0
+  input.setAttribute('aria-expanded', String(!menu.hidden))
+  highlight(active)
+  // The popup sizes itself to the page, so make room for the menu.
+  document.body.style.minHeight = menu.hidden ? '' : `${Math.ceil(menu.getBoundingClientRect().bottom + window.scrollY + 8)}px`
+}
+
+function closeMenu() {
+  $('tuning-menu').hidden = true
+  $('tuning').setAttribute('aria-expanded', 'false')
+  $('tuning').removeAttribute('aria-activedescendant')
+  document.body.style.minHeight = ''
+  active = -1
+}
+
+function highlight(i) {
+  active = i
+  const menu = $('tuning-menu')
+  for (const el of menu.querySelectorAll('.option')) el.setAttribute('aria-selected', String(Number(el.dataset.index) === i))
+  const el = $(`tuning-option-${i}`)
+  if (el) {
+    el.scrollIntoView({ block: 'nearest' })
+    $('tuning').setAttribute('aria-activedescendant', el.id)
+  } else {
+    $('tuning').removeAttribute('aria-activedescendant')
+  }
+}
+
+function pickTuning(value) {
+  const input = $('tuning')
+  input.value = value
+  touched.add('tuning')
+  draft.tuning = value
+  push()
+  closeMenu()
+}
+
+{
+  const input = $('tuning')
+  const menu = $('tuning-menu')
+  input.addEventListener('focus', openMenu)
+  input.addEventListener('click', () => menu.hidden && openMenu())
+  input.addEventListener('blur', closeMenu)
+  input.addEventListener('input', () => {
+    active = input.value.trim() ? 0 : -1
+    openMenu()
+  })
+  input.addEventListener('keydown', (e) => {
+    const open = !menu.hidden
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      if (!open) return openMenu()
+      const d = e.key === 'ArrowDown' ? 1 : -1
+      highlight(Math.max(-1, Math.min(shown.length - 1, active + d)))
+    } else if (e.key === 'Enter' && open && shown[active]) {
+      e.preventDefault()
+      e.stopPropagation()
+      pickTuning(shown[active].value)
+    } else if (e.key === 'Escape' && open) {
+      e.preventDefault()
+      e.stopPropagation()
+      closeMenu()
+    }
+  })
+  menu.addEventListener('mousedown', (e) => e.preventDefault()) // keep focus in the input
+  menu.addEventListener('mousemove', (e) => {
+    const el = e.target.closest('.option')
+    if (el && Number(el.dataset.index) !== active) highlight(Number(el.dataset.index))
+  })
+  menu.addEventListener('click', (e) => {
+    const el = e.target.closest('.option')
+    if (el) pickTuning(shown[Number(el.dataset.index)].value)
+  })
 }
 
 function addTags(raw) {
@@ -216,10 +328,10 @@ async function init() {
   $('title').select()
 
   const cached = (await chrome.storage.local.get('meta').catch(() => ({}))).meta
-  fillDatalists(cached ?? { presets: PRESET_TUNINGS })
+  fillSuggestions(cached ?? { presets: PRESET_TUNINGS })
 
   const [extracted, lookup, meta] = await Promise.allSettled([
-    chrome.scripting.executeScript({ target: { tabId: tab.id }, func: extractTabInfo }).then((r) => r?.[0]?.result),
+    extract(tab.id),
     api(`/lookup?url=${encodeURIComponent(tab.url)}`),
     api('/meta'),
   ])
@@ -227,7 +339,7 @@ async function init() {
   if (extracted.status === 'fulfilled' && extracted.value) Object.assign(draft, pickNonEmpty(extracted.value))
 
   if (meta.status === 'fulfilled') {
-    fillDatalists(meta.value)
+    fillSuggestions(meta.value)
     chrome.storage.local.set({ meta: meta.value }).catch(() => {})
   }
 
@@ -243,6 +355,8 @@ async function init() {
       $('hint').hidden = true
       $('remove').hidden = false
     } else {
+      // Most tabs are in standard tuning; sites often only mention it otherwise.
+      if (!draft.tuning && !touched.has('tuning')) draft.tuning = 'Standard'
       setStatus('Saves to Riff when you close this.')
     }
   } else {
@@ -251,6 +365,17 @@ async function init() {
 
   renderFields()
   push()
+}
+
+/** Read title/artist/tuning from the page, with the tuning in Riff's own terms ("EADGBe" → "Standard"). */
+async function extract(tabId) {
+  const info = (await chrome.scripting.executeScript({ target: { tabId }, func: extractTabInfo }))?.[0]?.result
+  if (info?.tuning) {
+    const normalized = await api(`/normalize?tuning=${encodeURIComponent(info.tuning)}`).catch(() => null)
+    // If Riff isn't running, keep the page's wording; Riff normalizes it on save.
+    if (normalized?.tuning) info.tuning = normalized.tuning
+  }
+  return info
 }
 
 function pickNonEmpty(obj) {

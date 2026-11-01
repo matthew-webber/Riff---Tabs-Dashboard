@@ -12,9 +12,14 @@ const presets = [
   ['Drop C#', 'C# G# C# F# A# D#'],
   ['Drop C', 'C G C F A D'],
   ['C Standard', 'C F Bb Eb G C'],
+  ['Drop B', 'B F# B E G# C#'],
   ['Open G', 'D G D G B D'],
   ['DADGAD', 'D A D G A D'],
-].map(([name, notes]) => ({ name, notes }))
+  ['A Standard', 'A D G C E A', 'more'],
+  ['Double Drop D', 'D A D G B D', 'more'],
+  ['Drop Bb', 'Bb F Bb Eb G C', 'more'],
+  ['Open A', 'E A E A C# E', 'more'],
+].map(([name, notes, group]) => ({ name, notes, common: group !== 'more' }))
 
 const day = 86_400_000
 const now = Date.now()

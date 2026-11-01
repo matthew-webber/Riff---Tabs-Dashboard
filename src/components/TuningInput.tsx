@@ -24,12 +24,12 @@ export function TuningInput({ value, onChange, onCommit, presets, inUse, placeho
 
   const items = useMemo<Suggestion[]>(() => {
     const all: Suggestion[] = [
-      ...presets.map((p) => ({ value: p.name, label: p.name, detail: p.notes })),
-      ...inUse.filter((t) => !presets.some((p) => p.name === t)).map((t) => ({ value: t, label: t, detail: 'custom' })),
+      ...presets.map((p) => ({ value: p.name, label: p.name, detail: p.notes, group: p.common ? 'common' : 'more' })),
+      ...inUse.filter((t) => !presets.some((p) => p.name === t)).map((t) => ({ value: t, label: t, detail: 'custom', group: 'custom' })),
     ]
     const q = squash(value)
     if (!q || presets.some((p) => p.name === value) || inUse.includes(value)) return all
-    return all.filter((s) => squash(s.label).includes(q) || squash(s.detail ?? '').startsWith(q))
+    return all.filter((s) => squash(s.label).includes(q) || (s.group !== 'custom' && squash(s.detail ?? '').startsWith(q)))
   }, [value, presets, inUse])
 
   const pick = (v: string) => {

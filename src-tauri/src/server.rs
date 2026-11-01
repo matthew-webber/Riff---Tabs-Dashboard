@@ -105,6 +105,12 @@ fn handle(mut req: Request, lib: &Arc<Mutex<Library>>, on_change: &impl Fn(Exter
             respond(req, 200, body, cors)
         }
 
+        // The canonical name for a tuning as found on a page ("EADGBe" → "Standard").
+        (Method::Get, "/api/normalize") => {
+            let tuning = param("tuning").as_deref().and_then(tuning::normalize);
+            respond(req, 200, json!({ "tuning": tuning }), cors)
+        }
+
         (Method::Get, "/api/lookup") => {
             let url = param("url").unwrap_or_default();
             let found = lib.lock().unwrap().find_by_url(&url);

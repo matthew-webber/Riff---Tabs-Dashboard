@@ -13,37 +13,67 @@ pub struct Preset {
     pub name: &'static str,
     /// Notes from lowest to highest string.
     pub notes: &'static str,
+    /// Common tunings are listed first in pickers; the rest follow alphabetically.
+    pub common: bool,
     #[serde(skip)]
     pub aliases: &'static [&'static str],
 }
 
-/// Ordered roughly by how commonly they're used; the sidebar follows this order.
+const fn common(name: &'static str, notes: &'static str, aliases: &'static [&'static str]) -> Preset {
+    Preset { name, notes, common: true, aliases }
+}
+
+const fn more(name: &'static str, notes: &'static str, aliases: &'static [&'static str]) -> Preset {
+    Preset { name, notes, common: false, aliases }
+}
+
+/// Common tunings first, ordered roughly by popularity (the sidebar follows
+/// this order), then less common ones in alphabetical order.
 pub const PRESETS: &[Preset] = &[
-    Preset { name: "Standard", notes: "E A D G B E", aliases: &["e standard", "std", "e std", "standard e", "normal", "eadgbe"] },
-    Preset { name: "Drop D", notes: "D A D G B E", aliases: &["dropd"] },
-    Preset {
-        name: "Eb Standard",
-        notes: "Eb Ab Db Gb Bb Eb",
-        aliases: &[
+    common("Standard", "E A D G B E", &["e standard", "std", "e std", "standard e", "normal", "eadgbe"]),
+    common("Drop D", "D A D G B E", &["dropd"]),
+    common(
+        "Eb Standard",
+        "Eb Ab Db Gb Bb Eb",
+        &[
             "e flat standard", "e flat", "eb", "d# standard", "d#", "half step down", "half-step down",
             "1/2 step down", "half step down standard", "standard half step down", "down half step",
         ],
-    },
-    Preset { name: "D Standard", notes: "D G C F A D", aliases: &["whole step down", "full step down", "one step down", "1 step down", "d std"] },
-    Preset { name: "Drop C#", notes: "C# G# C# F# A# D#", aliases: &["drop db", "drop c sharp", "drop d flat", "drop c# standard"] },
-    Preset { name: "Drop C", notes: "C G C F A D", aliases: &["dropc"] },
-    Preset { name: "C# Standard", notes: "C# F# B E G# C#", aliases: &["db standard", "c sharp standard", "d flat standard"] },
-    Preset { name: "C Standard", notes: "C F Bb Eb G C", aliases: &["c std", "two steps down"] },
-    Preset { name: "Drop B", notes: "B F# B E G# C#", aliases: &["dropb"] },
-    Preset { name: "B Standard", notes: "B E A D F# B", aliases: &["b std"] },
-    Preset { name: "Drop A", notes: "A E A D F# B", aliases: &["dropa"] },
-    Preset { name: "Open G", notes: "D G D G B D", aliases: &["dgdgbd"] },
-    Preset { name: "Open D", notes: "D A D F# A D", aliases: &[] },
-    Preset { name: "Open E", notes: "E B E G# B E", aliases: &[] },
-    Preset { name: "Open C", notes: "C G C G C E", aliases: &[] },
-    Preset { name: "DADGAD", notes: "D A D G A D", aliases: &["d modal", "celtic"] },
-    Preset { name: "7-String Standard", notes: "B E A D G B E", aliases: &["7 string standard", "7-string", "seven string standard"] },
-    Preset { name: "Bass Standard", notes: "E A D G", aliases: &["bass", "4 string standard", "bass e standard"] },
+    ),
+    common("D Standard", "D G C F A D", &["whole step down", "full step down", "one step down", "1 step down", "d std"]),
+    common(
+        "Drop C#",
+        "C# G# C# F# A# D#",
+        &[
+            "drop db", "drop c sharp", "drop d flat", "drop c# standard", "drop d half step down",
+            "half step down drop d", "eb drop db", "eb drop c#", "d# drop c#",
+        ],
+    ),
+    common("Drop C", "C G C F A D", &["dropc", "d standard drop c", "drop d whole step down"]),
+    common("C# Standard", "C# F# B E G# C#", &["db standard", "c sharp standard", "d flat standard"]),
+    common("C Standard", "C F Bb Eb G C", &["c std", "two steps down"]),
+    common("Drop B", "B F# B E G# C#", &["dropb"]),
+    common("B Standard", "B E A D F# B", &["b std"]),
+    common("Drop A", "A E A D F# B", &["dropa"]),
+    common("Open G", "D G D G B D", &["dgdgbd"]),
+    common("Open D", "D A D F# A D", &[]),
+    common("Open E", "E B E G# B E", &[]),
+    common("Open C", "C G C G C E", &[]),
+    common("DADGAD", "D A D G A D", &["d modal", "celtic"]),
+    common("7-String Standard", "B E A D G B E", &["7 string standard", "7-string", "7 string", "seven string standard"]),
+    common("Bass Standard", "E A D G", &["bass", "4 string standard", "bass e standard"]),
+    // Less common, alphabetical.
+    more("5-String Bass", "B E A D G", &["5 string bass", "5 string bass standard", "bass 5 string"]),
+    more("7-String Drop A", "A E A D G B E", &["7 string drop a", "drop a 7 string", "drop a 7 string standard"]),
+    more("A Standard", "A D G C E A", &["a std"]),
+    more("Bass Drop D", "D A D G", &["drop d bass", "bass drop d"]),
+    more("Bb Standard", "Bb Eb Ab Db F Bb", &["a# standard", "b flat standard", "bb std"]),
+    more("Double Drop D", "D A D G B D", &["double dropped d", "dadgbd"]),
+    more("Drop Bb", "Bb F Bb Eb G C", &["drop a#", "drop b flat", "drop a sharp"]),
+    more("Drop G", "G D G C E A", &["dropg"]),
+    more("Open A", "E A E A C# E", &[]),
+    more("Open D Minor", "D A D F A D", &["open dm", "open d min", "d minor open"]),
+    more("Open G Minor", "D G D G Bb D", &["open gm", "open g min", "g minor open"]),
 ];
 
 pub fn preset_rank(name: &str) -> Option<usize> {
@@ -59,7 +89,7 @@ pub fn normalize(raw: &str) -> Option<String> {
 
     // "Drop D (D A D G B E)" → try the name part first, then the notes inside.
     let (outside, inside) = split_parenthetical(&cleaned);
-    for candidate in [outside.as_str(), inside.as_deref().unwrap_or(""), cleaned.as_str()] {
+    for candidate in [cleaned.as_str(), outside.as_str(), inside.as_deref().unwrap_or("")] {
         if let Some(p) = match_alias(candidate) {
             return Some(p.name.to_string());
         }
@@ -94,7 +124,7 @@ fn split_parenthetical(s: &str) -> (String, Option<String>) {
 /// Lowercase, unify accidental glyphs and strip filler words so that
 /// "Drop-D Tuning" and "drop d" compare equal.
 fn alias_key(s: &str) -> String {
-    let s = s.to_lowercase().replace('♭', "b").replace('♯', "#").replace(['-', '_', ':', '.'], " ");
+    let s = s.to_lowercase().replace('♭', "b").replace('♯', "#").replace(['-', '_', ':', '.', '(', ')', ','], " ");
     let words: Vec<&str> = s
         .split_whitespace()
         .filter(|w| !matches!(*w, "tuning" | "tuned" | "guitar"))
@@ -231,12 +261,31 @@ mod tests {
         assert_eq!(n("D# Standard"), "Eb Standard");
         assert_eq!(n("drop db"), "Drop C#");
         assert_eq!(n("dadgad"), "DADGAD");
+        assert_eq!(n("Drop D (Half Step Down)"), "Drop C#");
+        assert_eq!(n("Drop A (7-String)"), "7-String Drop A");
+        assert_eq!(n("Drop D (bass)"), "Bass Drop D");
+        assert_eq!(n("Drop A#"), "Drop Bb");
+        assert_eq!(n("Open Dm"), "Open D Minor");
+    }
+
+    #[test]
+    fn preset_order() {
+        use super::PRESETS;
+        let first_more = PRESETS.iter().position(|p| !p.common).unwrap();
+        assert!(PRESETS[first_more..].iter().all(|p| !p.common), "common presets come first");
+        let names: Vec<_> = PRESETS[first_more..].iter().map(|p| p.name.to_lowercase()).collect();
+        assert!(names.windows(2).all(|w| w[0] < w[1]), "less common presets are alphabetical: {names:?}");
+        for p in PRESETS {
+            assert_eq!(super::normalize(p.notes).as_deref(), Some(p.name), "notes map back to their preset");
+            assert_eq!(super::normalize(p.name).as_deref(), Some(p.name), "names are stable");
+        }
     }
 
     #[test]
     fn note_sequences() {
         assert_eq!(n("EADGBE"), "Standard");
         assert_eq!(n("eadgbe"), "Standard");
+        assert_eq!(n("EADGBe"), "Standard");
         assert_eq!(n("E A D G B E"), "Standard");
         assert_eq!(n("E2 A2 D3 G3 B3 E4"), "Standard");
         assert_eq!(n("D-A-D-G-B-E"), "Drop D");
@@ -247,6 +296,10 @@ mod tests {
         assert_eq!(n("C#G#C#F#A#D#"), "Drop C#");
         assert_eq!(n("C G C F A D"), "Drop C");
         assert_eq!(n("B E A D G B E"), "7-String Standard");
+        assert_eq!(n("Db Ab Db Gb Bb Eb"), "Drop C#");
+        assert_eq!(n("DADGBD"), "Double Drop D");
+        assert_eq!(n("A E A D G B E"), "7-String Drop A");
+        assert_eq!(n("D A D G"), "Bass Drop D");
     }
 
     #[test]

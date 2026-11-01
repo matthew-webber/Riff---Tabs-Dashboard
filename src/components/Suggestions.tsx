@@ -1,10 +1,12 @@
-import { useEffect, useRef } from 'react'
+import { Fragment, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 
 export interface Suggestion {
   value: string
   label: string
   detail?: string
+  /** A separator is drawn wherever consecutive items change group. */
+  group?: string
 }
 
 /** Dropdown list shared by the tuning and tag inputs. Never takes focus. */
@@ -22,18 +24,20 @@ export function SuggestionList({ items, active, onPick, onHover, className }: { 
       onMouseDown={(e) => e.preventDefault()}
     >
       {items.map((s, i) => (
-        <div
-          key={s.value}
-          role="option"
-          aria-selected={i === active}
-          data-index={i}
-          onMouseEnter={() => onHover(i)}
-          onClick={() => onPick(s)}
-          className={cn('flex h-6 items-center gap-2 rounded-[5px] px-2 text-[13px]', i === active && 'bg-accent text-accent-fg')}
-        >
-          <span className="truncate">{s.label}</span>
-          {s.detail && <span className={cn('ml-auto shrink-0 font-mono text-[11px] text-fg-faint', i === active && 'text-accent-fg/75')}>{s.detail}</span>}
-        </div>
+        <Fragment key={s.value}>
+          {i > 0 && s.group !== items[i - 1].group && <div role="separator" className="mx-1 my-1 h-px bg-border" />}
+          <div
+            role="option"
+            aria-selected={i === active}
+            data-index={i}
+            onMouseEnter={() => onHover(i)}
+            onClick={() => onPick(s)}
+            className={cn('flex h-6 items-center gap-2 rounded-[5px] px-2 text-[13px]', i === active && 'bg-accent text-accent-fg')}
+          >
+            <span className="truncate">{s.label}</span>
+            {s.detail && <span className={cn('ml-auto shrink-0 font-mono text-[11px] text-fg-faint', i === active && 'text-accent-fg/75')}>{s.detail}</span>}
+          </div>
+        </Fragment>
       ))}
     </div>
   )

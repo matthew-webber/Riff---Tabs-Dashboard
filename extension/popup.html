@@ -26,11 +26,13 @@
         <span>Artist</span>
         <input id="artist" placeholder="Artist" />
       </label>
-      <label class="field">
-        <span>Tuning</span>
-        <input id="tuning" list="tunings" placeholder="Standard, Drop D, DADGBE…" />
-        <datalist id="tunings"></datalist>
-      </label>
+      <div class="field">
+        <label for="tuning">Tuning</label>
+        <div class="combo">
+          <input id="tuning" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="tuning-menu" placeholder="Standard, Drop D, DADGBE…" />
+          <div id="tuning-menu" class="menu" role="listbox" hidden></div>
+        </div>
+      </div>
       <div class="field">
         <span>Tags</span>
         <div class="tags" id="tagbox">

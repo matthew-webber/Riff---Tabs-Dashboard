@@ -30,6 +30,8 @@ export interface TabInput {
 export interface TuningPreset {
   name: string
   notes: string
+  /** Common tunings are listed first; the rest follow alphabetically. */
+  common: boolean
 }
 
 export interface Meta {
