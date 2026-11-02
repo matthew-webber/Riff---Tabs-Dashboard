@@ -59,6 +59,8 @@ const normTuning = (t?: string) => {
 const clone = <T,>(x: T): T => structuredClone(x)
 const delay = <T,>(x: T) => new Promise<T>((r) => setTimeout(() => r(clone(x)), 10))
 
+let playTuning: string | null = null
+
 export const mock = {
   meta: () => delay<Meta>({ presets, apiPort: 47813 }),
   listTabs: () => delay(tabs),
@@ -96,6 +98,11 @@ export const mock = {
     tab.openCount++
     window.open(tab.url, '_blank', 'noopener')
     return delay(tab)
+  },
+  playTuning: () => delay(playTuning),
+  setPlayTuning: (tuning: string | null) => {
+    playTuning = normTuning(tuning ?? undefined)
+    return delay(playTuning)
   },
   renameTag: (from: string, to: string) => {
     for (const t of tabs) t.tags = [...new Set(t.tags.map((x) => (x === from ? to : x)))]

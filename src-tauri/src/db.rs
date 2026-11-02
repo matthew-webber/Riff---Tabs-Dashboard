@@ -136,7 +136,34 @@ impl Library {
             )
             .map_err(db_err)?;
         }
+        if version < 2 {
+            conn.execute_batch(
+                "CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+                PRAGMA user_version = 2;",
+            )
+            .map_err(db_err)?;
+        }
         Ok(Self { conn })
+    }
+
+    /// The tuning the player's guitar is in right now, if they've set one.
+    /// Tab Transposer shifts tabs opened in the browser to match it.
+    pub fn play_tuning(&self) -> Result<Option<String>> {
+        self.conn
+            .query_row("SELECT value FROM settings WHERE key = 'play_tuning'", [], |r| r.get(0))
+            .optional()
+            .map_err(db_err)
+    }
+
+    /// Set (normalized) or clear the player's tuning. Returns what was stored.
+    pub fn set_play_tuning(&self, tuning: Option<&str>) -> Result<Option<String>> {
+        let tuning = tuning.and_then(tuning::normalize);
+        match &tuning {
+            Some(t) => self.conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('play_tuning', ?1)", [t]),
+            None => self.conn.execute("DELETE FROM settings WHERE key = 'play_tuning'", []),
+        }
+        .map_err(db_err)?;
+        Ok(tuning)
     }
 
     pub fn list(&self) -> Result<Vec<Tab>> {
@@ -399,6 +426,16 @@ mod tests {
         lib.save(TabInput { id: Some(a.id), tags: Some(vec![]), ..Default::default() }).unwrap();
         lib.delete(lib.find_by_url("https://a.com/2").unwrap().unwrap().id).unwrap();
         assert!(lib.tags().unwrap().is_empty());
+    }
+
+    #[test]
+    fn play_tuning_is_normalized_and_clearable() {
+        let lib = Library::open_in_memory().unwrap();
+        assert_eq!(lib.play_tuning().unwrap(), None);
+        assert_eq!(lib.set_play_tuning(Some("whole step down")).unwrap().as_deref(), Some("D Standard"));
+        assert_eq!(lib.play_tuning().unwrap().as_deref(), Some("D Standard"));
+        assert_eq!(lib.set_play_tuning(Some("  ")).unwrap(), None);
+        assert_eq!(lib.play_tuning().unwrap(), None);
     }
 
     #[test]

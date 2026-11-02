@@ -1,6 +1,7 @@
 import { ExternalLink, Star, Trash2 } from 'lucide-react'
 import { forwardRef, useRef, useState, type ReactNode } from 'react'
 import type { Tab, TabInput, TuningPreset } from '@/lib/api'
+import { fretShift, stepLabel } from '@/lib/library'
 import { cn, fullDate, hostOf } from '@/lib/utils'
 import { TagInput } from './TagInput'
 import { TuningInput } from './TuningInput'
@@ -10,6 +11,8 @@ interface Props {
   tab: Tab | null
   presets: TuningPreset[]
   tuningsInUse: string[]
+  /** The tuning the player is in, for the "opens shifted" hint. */
+  playTuning: string | null
   allTags: string[]
   onSave: (input: TabInput) => Promise<boolean>
   onOpen: (tab: Tab) => void
@@ -19,7 +22,7 @@ interface Props {
 }
 
 /** Right-hand panel for viewing and editing the selected tab. Every field saves on its own. */
-export const Inspector = forwardRef<HTMLInputElement, Props>(function Inspector({ tab, presets, tuningsInUse, allTags, onSave, onOpen, onDelete, onDone }, titleRef) {
+export const Inspector = forwardRef<HTMLInputElement, Props>(function Inspector({ tab, presets, tuningsInUse, playTuning, allTags, onSave, onOpen, onDelete, onDone }, titleRef) {
   if (!tab) {
     return (
       <aside className="flex h-full items-center justify-center p-6 text-center text-xs text-fg-faint">
@@ -69,6 +72,7 @@ export const Inspector = forwardRef<HTMLInputElement, Props>(function Inspector(
 
         <Field label="Tuning">
           <TuningField key={tab.id} value={tab.tuning ?? ''} presets={presets} inUse={tuningsInUse} onCommit={(tuning) => save({ tuning })} />
+          {playTuning && tab.tuning && <ShiftHint tuning={tab.tuning} playTuning={playTuning} presets={presets} />}
         </Field>
 
         <Field label="Tags">
@@ -98,6 +102,18 @@ export const Inspector = forwardRef<HTMLInputElement, Props>(function Inspector(
     </aside>
   )
 })
+
+/** What Tab Transposer will do to this tab, given the tuning set in the sidebar. */
+function ShiftHint({ tuning, playTuning, presets }: { tuning: string; playTuning: string; presets: TuningPreset[] }) {
+  const frets = fretShift(tuning, playTuning, presets)
+  const text =
+    frets == null
+      ? `Can’t be shifted to ${playTuning}: the strings aren’t tuned the same distance apart.`
+      : frets === 0
+        ? `Already in ${playTuning}.`
+        : `Opens ${stepLabel(frets).toLowerCase()} for ${playTuning}.`
+  return <p className={cn('pt-0.5 text-[11px]', frets ? 'text-accent' : 'text-fg-faint')}>{text}</p>
+}
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (

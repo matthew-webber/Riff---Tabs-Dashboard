@@ -19,6 +19,7 @@ const isTextInput = (el: Element | null) => !!el && (el.matches('input, textarea
 export default function App() {
   const [tabs, setTabs] = useState<Tab[]>([])
   const [presets, setPresets] = useState<TuningPreset[]>([])
+  const [playTuning, setPlayTuning] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [view, setView] = usePersistentState<View>('riff.view', { kind: 'all' })
   const [sort, setSort] = usePersistentState<Sort>('riff.sort', { key: 'artist', dir: 'asc' })
@@ -44,10 +45,11 @@ export default function App() {
 
   // Initial load.
   useEffect(() => {
-    Promise.all([api.meta(), api.listTabs()])
-      .then(([meta, list]) => {
+    Promise.all([api.meta(), api.listTabs(), api.playTuning()])
+      .then(([meta, list, play]) => {
         setPresets(meta.presets)
         setTabs(list)
+        setPlayTuning(play)
       }, fail)
       .finally(() => setLoaded(true))
   }, [fail])
@@ -273,6 +275,10 @@ export default function App() {
               return reload()
             }, fail)
           }}
+          playTuning={playTuning}
+          onPlayTuningChange={(t) => api.setPlayTuning(t).then(setPlayTuning, fail)}
+          presets={presets}
+          tuningsInUse={tuningsInUse}
           onExit={() => listRef.current?.focus()}
         />
       </div>
@@ -373,6 +379,7 @@ export default function App() {
                 tab={selected}
                 presets={presets}
                 tuningsInUse={tuningsInUse}
+                playTuning={playTuning}
                 allTags={allTags}
                 onSave={saveTab}
                 onOpen={openTab}

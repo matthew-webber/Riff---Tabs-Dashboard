@@ -69,6 +69,12 @@ On macOS, closing the window keeps Riff running so the extension can keep saving
 
 To add a site, add a branch to `extractTabInfo` in `extension/extract.js`.
 
+## Playing in another tuning (Tab Transposer)
+
+Set **Tuned to…** at the bottom of the sidebar to the tuning your guitar is in right now. With [Tab Transposer](../extensions/tab-transposer) set to **Follow Riff's tuning**, any saved tab you open (from Riff or elsewhere) is shifted to match. For example, a Standard tab opened while you're tuned to D Standard moves up a whole step. The details panel shows what will happen to the selected tab.
+
+Tab Transposer moves every string by the same amount, so this works only when the two tunings are the same intervals apart (Standard ↔ D Standard, Drop D ↔ Drop C). Standard ↔ Drop D can't be shifted, and Riff says so. The math is `tuning::fret_shift`, served to the extension at `GET /api/transpose?url=…`. A copy in `src/lib/library.ts` drives the hint in the details panel.
+
 ## Keyboard
 
 | Key | Action |

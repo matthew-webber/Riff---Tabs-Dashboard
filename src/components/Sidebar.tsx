@@ -1,5 +1,6 @@
-import { Clock, Guitar, Hash, History, Pencil, Star, Trash2 } from 'lucide-react'
+import { ChevronsUpDown, Clock, Guitar, Hash, History, Pencil, Star, Trash2 } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
+import type { TuningPreset } from '@/lib/api'
 import type { SidebarCounts, View } from '@/lib/library'
 import { sameView } from '@/lib/library'
 import { cn } from '@/lib/utils'
@@ -22,11 +23,16 @@ interface Props {
   onSelect: (v: View) => void
   onRenameTag: (from: string, to: string) => void
   onDeleteTag: (name: string) => void
+  /** The tuning the player's guitar is in; Tab Transposer shifts opened tabs to it. */
+  playTuning: string | null
+  onPlayTuningChange: (tuning: string | null) => void
+  presets: TuningPreset[]
+  tuningsInUse: string[]
   /** Called when the user presses → or Tab to move into the list. */
   onExit: () => void
 }
 
-export function Sidebar({ counts, view, onSelect, onRenameTag, onDeleteTag, onExit }: Props) {
+export function Sidebar({ counts, view, onSelect, onRenameTag, onDeleteTag, playTuning, onPlayTuningChange, presets, tuningsInUse, onExit }: Props) {
   const [renaming, setRenaming] = useState<string | null>(null)
 
   const item = (v: View, icon: ReactNode, label: ReactNode, count?: number, key?: string) => (
@@ -108,7 +114,55 @@ export function Sidebar({ counts, view, onSelect, onRenameTag, onDeleteTag, onEx
           </Section>
         )}
       </div>
+      <TunedTo value={playTuning} onChange={onPlayTuningChange} presets={presets} inUse={tuningsInUse} />
     </nav>
+  )
+}
+
+/**
+ * "Tuned to D Standard": the signal for Tab Transposer. A native select laid
+ * over a sidebar-style row, so it gets the system menu and keyboard handling.
+ */
+function TunedTo({ value, onChange, presets, inUse }: { value: string | null; onChange: (v: string | null) => void; presets: TuningPreset[]; inUse: string[] }) {
+  const custom = [...inUse, ...(value ? [value] : [])].filter((t, i, all) => !presets.some((p) => p.name === t) && all.indexOf(t) === i)
+  const option = (name: string, detail?: string) => (
+    <option key={name} value={name}>
+      {detail ? `${name}  (${detail})` : name}
+    </option>
+  )
+  return (
+    <div className="shrink-0 border-t border-border px-2.5 py-2">
+      <label
+        title="Tabs you open from Riff shift to this tuning in Tab Transposer"
+        className="relative flex h-7 items-center gap-2 rounded-md px-2 text-[13px] focus-within:ring-2 focus-within:ring-ring hover:bg-bg-hover [&_svg]:size-4 [&_svg]:shrink-0"
+      >
+        <StringsIcon className={cn(value ? 'text-accent' : 'text-fg-faint')} />
+        <span className="min-w-0 flex-1 truncate">
+          {value ? (
+            <>
+              <span className="text-fg-muted">Tuned to </span>
+              <span className="font-medium">{value}</span>
+            </>
+          ) : (
+            <span className="text-fg-muted">Not transposing</span>
+          )}
+        </span>
+        <ChevronsUpDown className="size-3.5! text-fg-faint" />
+        <select
+          aria-label="Tuning your guitar is in"
+          value={value ?? ''}
+          onChange={(e) => onChange(e.target.value || null)}
+          // Keep arrow keys in the menu instead of the sidebar's list navigation.
+          onKeyDown={(e) => e.stopPropagation()}
+          className="absolute inset-0 cursor-default appearance-none opacity-0"
+        >
+          <option value="">Don’t Transpose</option>
+          <optgroup label="Common">{presets.filter((p) => p.common).map((p) => option(p.name, p.notes))}</optgroup>
+          <optgroup label="More">{presets.filter((p) => !p.common).map((p) => option(p.name, p.notes))}</optgroup>
+          {custom.length > 0 && <optgroup label="Custom">{custom.map((t) => option(t))}</optgroup>}
+        </select>
+      </label>
+    </div>
   )
 }
 

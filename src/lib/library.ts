@@ -154,3 +154,50 @@ export function sidebarCounts(tabs: Tab[], presets: TuningPreset[]): SidebarCoun
     tags: [...tags.values()].sort((a, b) => collator.compare(a.name, b.name)),
   }
 }
+
+// ---- transposing for the player's tuning ---------------------------------
+// Mirrors tuning::fret_shift in src-tauri/src/tuning.rs, which is what Tab
+// Transposer actually gets. Stored tunings are canonical: a preset name or
+// space-separated notes ("C G C G G C").
+
+const PITCH: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }
+
+function pitchClasses(tuning: string, presets: TuningPreset[]): number[] | null {
+  const notes = (presets.find((p) => p.name === tuning)?.notes ?? tuning).trim().split(/\s+/)
+  if (notes.length < 4 || notes.length > 8) return null
+  const out: number[] = []
+  for (const n of notes) {
+    const m = /^([A-G])([#b]?)$/.exec(n)
+    if (!m) return null
+    out.push((PITCH[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + 12) % 12)
+  }
+  return out
+}
+
+/** Lowest string's pitch, in the octave nearest a standard instrument with as many strings. */
+function lowestPitch(pcs: number[]): number {
+  const reference = ({ 4: 28, 5: 23, 7: 35, 8: 30 } as Record<number, number>)[pcs.length] ?? 40
+  const top = reference + 3
+  return top - (((top - pcs[0]) % 12) + 12) % 12
+}
+
+/**
+ * Frets to move a tab written in `tab` so it plays in `play` (positive = up),
+ * or null when the strings don't all differ by the same amount.
+ */
+export function fretShift(tab: string, play: string, presets: TuningPreset[]): number | null {
+  const from = pitchClasses(tab, presets)
+  const to = pitchClasses(play, presets)
+  if (!from || !to || from.length !== to.length) return null
+  const shift = lowestPitch(from) - lowestPitch(to)
+  if (!from.every((pc, i) => (((pc - to[i] - shift) % 12) + 12) % 12 === 0)) return null
+  return shift > 10 ? shift - 12 : shift < -10 ? shift + 12 : shift
+}
+
+/** "Up 1 step", "Down ½ step", "Up 2½ steps". */
+export function stepLabel(frets: number): string {
+  const n = Math.abs(frets)
+  const whole = Math.floor(n / 2)
+  const amount = whole === 0 ? '½' : `${whole}${n % 2 ? '½' : ''}`
+  return `${frets > 0 ? 'Up' : 'Down'} ${amount} ${n <= 2 ? 'step' : 'steps'}`
+}

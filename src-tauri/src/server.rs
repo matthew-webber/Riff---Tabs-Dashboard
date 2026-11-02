@@ -111,6 +111,31 @@ fn handle(mut req: Request, lib: &Arc<Mutex<Library>>, on_change: &impl Fn(Exter
             respond(req, 200, json!({ "tuning": tuning }), cors)
         }
 
+        // Used by Tab Transposer when a page loads: how far to shift this
+        // saved tab so it plays in the tuning the player has set in Riff.
+        // `frets` is null when there's nothing to do (no tuning set, tab not
+        // saved or has no tuning) or the tunings can't be matched by a shift.
+        (Method::Get, "/api/transpose") => {
+            let url = param("url").unwrap_or_default();
+            let result = {
+                let lib = lib.lock().unwrap();
+                lib.play_tuning().and_then(|play| Ok((play, lib.find_by_url(&url)?)))
+            };
+            match result {
+                Ok((play, tab)) => {
+                    let tab_tuning = tab.as_ref().and_then(|t| t.tuning.clone());
+                    let frets = play.as_deref().zip(tab_tuning.as_deref()).and_then(|(p, t)| tuning::fret_shift(t, p));
+                    let body = json!({
+                        "playTuning": play,
+                        "tab": tab.map(|t| json!({ "title": t.title, "artist": t.artist, "tuning": t.tuning })),
+                        "frets": frets,
+                    });
+                    respond(req, 200, body, cors)
+                }
+                Err(e) => respond(req, 500, json!({ "error": e }), cors),
+            }
+        }
+
         (Method::Get, "/api/lookup") => {
             let url = param("url").unwrap_or_default();
             let found = lib.lock().unwrap().find_by_url(&url);

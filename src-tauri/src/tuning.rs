@@ -229,6 +229,47 @@ fn match_notes(notes: &[Note]) -> Option<&'static Preset> {
     })
 }
 
+/// The notes of a tuning given by name ("Drop D") or as notes ("C G C G G C").
+fn notes_of(tuning: &str) -> Option<Vec<Note>> {
+    let name = normalize(tuning)?;
+    let notes = PRESETS.iter().find(|p| p.name == name).map_or(name.as_str(), |p| p.notes);
+    parse_notes(notes)
+}
+
+/// MIDI pitch of the lowest string, choosing the octave closest to a standard
+/// instrument with the same number of strings (at most 3 semitones above it,
+/// since tunings mostly go down). E.g. Drop A's low A is A1, not A2.
+fn lowest_pitch(notes: &[Note]) -> i32 {
+    let reference = match notes.len() {
+        4 => 28, // E1, bass
+        5 => 23, // B0, 5-string bass
+        7 => 35, // B1
+        8 => 30, // F#1
+        _ => 40, // E2
+    };
+    let top = reference + 3;
+    top - (top - i32::from(notes[0].pitch_class())).rem_euclid(12)
+}
+
+/// How many frets to move a tab written in `tab` so it can be played in
+/// `play` (positive = up). Tab Transposer moves every string by the same
+/// amount, so this is `None` unless all strings differ equally (Standard →
+/// D Standard works, Standard → Drop D doesn't), or either tuning is unknown.
+pub fn fret_shift(tab: &str, play: &str) -> Option<i32> {
+    let (from, to) = (notes_of(tab)?, notes_of(play)?);
+    if from.len() != to.len() {
+        return None;
+    }
+    let shift = lowest_pitch(&from) - lowest_pitch(&to);
+    let uniform = from.iter().zip(&to).all(|(a, b)| (i32::from(a.pitch_class()) - i32::from(b.pitch_class()) - shift).rem_euclid(12) == 0);
+    // Tab Transposer goes up to ±10 frets; anything further is the same notes an octave away.
+    uniform.then_some(match shift {
+        s if s > 10 => s - 12,
+        s if s < -10 => s + 12,
+        s => s,
+    })
+}
+
 fn format_notes(notes: &[Note]) -> String {
     notes
         .iter()
@@ -306,6 +347,32 @@ mod tests {
     fn parentheticals() {
         assert_eq!(n("Drop D (D A D G B E)"), "Drop D");
         assert_eq!(n("Something (D A D G B E)"), "Drop D");
+    }
+
+    #[test]
+    fn fret_shifts() {
+        use super::fret_shift;
+        // A tab in Standard, played tuned to D Standard: everything moves up a whole step.
+        assert_eq!(fret_shift("Standard", "D Standard"), Some(2));
+        assert_eq!(fret_shift("D Standard", "Standard"), Some(-2));
+        assert_eq!(fret_shift("Standard", "Eb Standard"), Some(1));
+        assert_eq!(fret_shift("Drop D", "Drop C"), Some(2));
+        assert_eq!(fret_shift("Drop C", "Drop D"), Some(-2));
+        assert_eq!(fret_shift("Drop D", "Drop B"), Some(3));
+        assert_eq!(fret_shift("Standard", "B Standard"), Some(5));
+        assert_eq!(fret_shift("Standard", "A Standard"), Some(7));
+        assert_eq!(fret_shift("C Standard", "Standard"), Some(-4));
+        assert_eq!(fret_shift("Standard", "Standard"), Some(0));
+        assert_eq!(fret_shift("eadgbe", "half step down"), Some(1));
+        assert_eq!(fret_shift("7-String Standard", "7-String Drop A"), None);
+        assert_eq!(fret_shift("Bass Standard", "Bass Drop D"), None);
+        assert_eq!(fret_shift("Drop Bb", "Drop C"), Some(-2));
+        assert_eq!(fret_shift("C G C G G C", "D A D A A D"), Some(-2));
+        // Different string intervals, string counts, or unknown tunings can't be shifted.
+        assert_eq!(fret_shift("Standard", "Drop D"), None);
+        assert_eq!(fret_shift("Open G", "Standard"), None);
+        assert_eq!(fret_shift("Standard", "7-String Standard"), None);
+        assert_eq!(fret_shift("Nashville", "Standard"), None);
     }
 
     #[test]

@@ -77,6 +77,16 @@ fn open_tab(app: AppHandle, state: State<AppState>, id: i64) -> CmdResult<Tab> {
 }
 
 #[tauri::command]
+fn get_play_tuning(state: State<AppState>) -> CmdResult<Option<String>> {
+    state.lib.lock().unwrap().play_tuning()
+}
+
+#[tauri::command]
+fn set_play_tuning(state: State<AppState>, tuning: Option<String>) -> CmdResult<Option<String>> {
+    state.lib.lock().unwrap().set_play_tuning(tuning.as_deref())
+}
+
+#[tauri::command]
 fn rename_tag(state: State<AppState>, from: String, to: String) -> CmdResult<()> {
     state.lib.lock().unwrap().rename_tag(&from, &to)
 }
@@ -195,6 +205,8 @@ pub fn run() {
             restore_tab,
             delete_tab,
             open_tab,
+            get_play_tuning,
+            set_play_tuning,
             rename_tag,
             delete_tag,
         ])

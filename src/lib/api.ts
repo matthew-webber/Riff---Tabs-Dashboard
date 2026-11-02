@@ -57,6 +57,8 @@ const tauri = {
   restoreTab: (tab: Tab) => invoke<Tab>('restore_tab', { tab }),
   deleteTab: (id: number) => invoke<void>('delete_tab', { id }),
   openTab: (id: number) => invoke<Tab>('open_tab', { id }),
+  playTuning: () => invoke<string | null>('get_play_tuning'),
+  setPlayTuning: (tuning: string | null) => invoke<string | null>('set_play_tuning', { tuning }),
   renameTag: (from: string, to: string) => invoke<void>('rename_tag', { from, to }),
   deleteTag: (name: string) => invoke<void>('delete_tag', { name }),
 }
