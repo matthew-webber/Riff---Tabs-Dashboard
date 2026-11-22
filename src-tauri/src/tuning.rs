@@ -251,23 +251,36 @@ fn lowest_pitch(notes: &[Note]) -> i32 {
     top - (top - i32::from(notes[0].pitch_class())).rem_euclid(12)
 }
 
-/// How many frets to move a tab written in `tab` so it can be played in
-/// `play` (positive = up). Tab Transposer moves every string by the same
-/// amount, so this is `None` unless all strings differ equally (Standard →
-/// D Standard works, Standard → Drop D doesn't), or either tuning is unknown.
-pub fn fret_shift(tab: &str, play: &str) -> Option<i32> {
+/// Frets to move each string of a tab written in `tab` so it can be played in
+/// `play` (positive = up), listed from the 1st (highest) string down, the way
+/// tab staves are written. Standard → Drop D is `[0, 0, 0, 0, 0, 2]`. `None`
+/// when the string counts differ or either tuning is unknown.
+pub fn string_shifts(tab: &str, play: &str) -> Option<Vec<i32>> {
     let (from, to) = (notes_of(tab)?, notes_of(play)?);
     if from.len() != to.len() {
         return None;
     }
-    let shift = lowest_pitch(&from) - lowest_pitch(&to);
-    let uniform = from.iter().zip(&to).all(|(a, b)| (i32::from(a.pitch_class()) - i32::from(b.pitch_class()) - shift).rem_euclid(12) == 0);
-    // Tab Transposer goes up to ±10 frets; anything further is the same notes an octave away.
-    uniform.then_some(match shift {
-        s if s > 10 => s - 12,
-        s if s < -10 => s + 12,
-        s => s,
-    })
+    // The low string fixes the octave; every other string takes the octave of
+    // its own difference that's closest to it.
+    let base = lowest_pitch(&from) - lowest_pitch(&to);
+    let shifts = from.iter().zip(&to).rev().map(|(a, b)| {
+        let diff = i32::from(a.pitch_class()) - i32::from(b.pitch_class());
+        // Tab Transposer goes up to ±10 frets; anything further is the same notes an octave away.
+        match base + (diff - base + 6).rem_euclid(12) - 6 {
+            s if s > 10 => s - 12,
+            s if s < -10 => s + 12,
+            s => s,
+        }
+    });
+    Some(shifts.collect())
+}
+
+/// How many frets to move every string of a tab written in `tab` so it can be
+/// played in `play`, when they all move the same amount (Standard → D Standard
+/// does, Standard → Drop D doesn't; see `string_shifts`).
+pub fn fret_shift(tab: &str, play: &str) -> Option<i32> {
+    let shifts = string_shifts(tab, play)?;
+    shifts.iter().all(|&s| s == shifts[0]).then_some(shifts[0])
 }
 
 fn format_notes(notes: &[Note]) -> String {
@@ -373,6 +386,26 @@ mod tests {
         assert_eq!(fret_shift("Open G", "Standard"), None);
         assert_eq!(fret_shift("Standard", "7-String Standard"), None);
         assert_eq!(fret_shift("Nashville", "Standard"), None);
+    }
+
+    #[test]
+    fn string_shifts() {
+        use super::string_shifts;
+        let s = |tab, play| string_shifts(tab, play).unwrap();
+        // 1st (high) string first, like a tab stave.
+        assert_eq!(s("Standard", "Drop D"), [0, 0, 0, 0, 0, 2]);
+        assert_eq!(s("Drop D", "Standard"), [0, 0, 0, 0, 0, -2]);
+        assert_eq!(s("Drop D", "D Standard"), [2, 2, 2, 2, 2, 0]);
+        assert_eq!(s("Drop C", "D Standard"), [0, 0, 0, 0, 0, -2]);
+        assert_eq!(s("Standard", "Drop C"), [2, 2, 2, 2, 2, 4]);
+        assert_eq!(s("Standard", "Open G"), [2, 0, 0, 0, 2, 2]);
+        assert_eq!(s("Standard", "Drop A"), [5, 5, 5, 5, 5, 7]);
+        assert_eq!(s("Standard", "DADGAD"), [2, 2, 0, 0, 0, 2]);
+        assert_eq!(s("Drop D", "Drop C"), [2, 2, 2, 2, 2, 2]);
+        assert_eq!(s("7-String Standard", "7-String Drop A"), [0, 0, 0, 0, 0, 0, 2]);
+        assert_eq!(s("Bass Standard", "Bass Drop D"), [0, 0, 0, 2]);
+        assert_eq!(string_shifts("Standard", "7-String Standard"), None);
+        assert_eq!(string_shifts("Nashville", "Standard"), None);
     }
 
     #[test]

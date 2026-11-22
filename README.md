@@ -73,7 +73,7 @@ To add a site, add a branch to `extractTabInfo` in `extension/extract.js`.
 
 Set **Tuned to…** at the bottom of the sidebar to the tuning your guitar is in right now. With [Tab Transposer](../extensions/tab-transposer) set to **Follow Riff's tuning**, any saved tab you open (from Riff or elsewhere) is shifted to match. For example, a Standard tab opened while you're tuned to D Standard moves up a whole step. The details panel shows what will happen to the selected tab.
 
-Tab Transposer moves every string by the same amount, so this works only when the two tunings are the same intervals apart (Standard ↔ D Standard, Drop D ↔ Drop C). Standard ↔ Drop D can't be shifted, and Riff says so. The math is `tuning::fret_shift`, served to the extension at `GET /api/transpose?url=…`. A copy in `src/lib/library.ts` drives the hint in the details panel.
+Each string is shifted on its own, so drop and open tunings work too: a Standard tab opened while you're tuned to Drop D gets its 6th string moved up a whole step, and a Drop D tab in D Standard moves up a whole step except the 6th string. Only tunings with a different number of strings (or notes Riff can't read) can't be matched, and Riff says so. The math is `tuning::string_shifts`, served to the extension at `GET /api/transpose?url=…` as `strings` (1st string first), plus `frets` when every string moves the same amount. A copy in `src/lib/library.ts` drives the hint in the details panel.
 
 ## Keyboard
 

@@ -156,7 +156,7 @@ export function sidebarCounts(tabs: Tab[], presets: TuningPreset[]): SidebarCoun
 }
 
 // ---- transposing for the player's tuning ---------------------------------
-// Mirrors tuning::fret_shift in src-tauri/src/tuning.rs, which is what Tab
+// Mirrors tuning::string_shifts in src-tauri/src/tuning.rs, which is what Tab
 // Transposer actually gets. Stored tunings are canonical: a preset name or
 // space-separated notes ("C G C G G C").
 
@@ -181,18 +181,41 @@ function lowestPitch(pcs: number[]): number {
   return top - (((top - pcs[0]) % 12) + 12) % 12
 }
 
+const foldOctave = (s: number) => (s > 10 ? s - 12 : s < -10 ? s + 12 : s)
+const mod12 = (n: number) => ((n % 12) + 12) % 12
+
 /**
- * Frets to move a tab written in `tab` so it plays in `play` (positive = up),
- * or null when the strings don't all differ by the same amount.
+ * Frets to move each string of a tab written in `tab` so it plays in `play`
+ * (positive = up), 1st (high) string first, or null when the tunings can't be
+ * matched (different string counts or unknown notes).
  */
-export function fretShift(tab: string, play: string, presets: TuningPreset[]): number | null {
+export function stringShifts(tab: string, play: string, presets: TuningPreset[]): number[] | null {
   const from = pitchClasses(tab, presets)
   const to = pitchClasses(play, presets)
   if (!from || !to || from.length !== to.length) return null
-  const shift = lowestPitch(from) - lowestPitch(to)
-  if (!from.every((pc, i) => (((pc - to[i] - shift) % 12) + 12) % 12 === 0)) return null
-  return shift > 10 ? shift - 12 : shift < -10 ? shift + 12 : shift
+  const base = lowestPitch(from) - lowestPitch(to)
+  return from.map((pc, i) => foldOctave(base + mod12(pc - to[i] - base + 6) - 6)).reverse()
 }
+
+/** "6th string up 1 step", "up 1 step, 6th string as written"; empty when nothing moves. */
+export function describeShifts(shifts: number[]): string {
+  // The amount most strings move (ties: the smaller one); the rest are listed.
+  const counts = new Map<number, number>()
+  for (const s of shifts) counts.set(s, (counts.get(s) ?? 0) + 1)
+  let base = 0
+  let best = -1
+  for (const [s, n] of counts) if (n > best || (n === best && Math.abs(s) < Math.abs(base))) [base, best] = [s, n]
+  const groups = new Map<number, string[]>()
+  shifts.forEach((s, i) => s !== base && groups.set(s, [...(groups.get(s) ?? []), ORDINALS[i] ?? `${i + 1}th`]))
+  const parts = base ? [stepLabel(base).toLowerCase()] : []
+  for (const [s, names] of groups) {
+    const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]
+    parts.push(`${list} string${names.length > 1 ? 's' : ''} ${s ? stepLabel(s).toLowerCase() : 'as written'}`)
+  }
+  return parts.join(', ')
+}
+
+const ORDINALS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th']
 
 /** "Up 1 step", "Down ½ step", "Up 2½ steps". */
 export function stepLabel(frets: number): string {

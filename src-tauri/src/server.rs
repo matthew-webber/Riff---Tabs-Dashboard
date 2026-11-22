@@ -113,8 +113,11 @@ fn handle(mut req: Request, lib: &Arc<Mutex<Library>>, on_change: &impl Fn(Exter
 
         // Used by Tab Transposer when a page loads: how far to shift this
         // saved tab so it plays in the tuning the player has set in Riff.
-        // `frets` is null when there's nothing to do (no tuning set, tab not
-        // saved or has no tuning) or the tunings can't be matched by a shift.
+        // `strings` is the shift for each string, 1st (high) string first;
+        // `frets` is the single shift when every string moves the same amount
+        // (kept for older Tab Transposer versions). Both are null when there's
+        // nothing to do (no tuning set, tab not saved or has no tuning) or the
+        // tunings can't be matched (different string counts, unknown tuning).
         (Method::Get, "/api/transpose") => {
             let url = param("url").unwrap_or_default();
             let result = {
@@ -124,11 +127,14 @@ fn handle(mut req: Request, lib: &Arc<Mutex<Library>>, on_change: &impl Fn(Exter
             match result {
                 Ok((play, tab)) => {
                     let tab_tuning = tab.as_ref().and_then(|t| t.tuning.clone());
-                    let frets = play.as_deref().zip(tab_tuning.as_deref()).and_then(|(p, t)| tuning::fret_shift(t, p));
+                    let tunings = play.as_deref().zip(tab_tuning.as_deref());
+                    let strings = tunings.and_then(|(p, t)| tuning::string_shifts(t, p));
+                    let frets = tunings.and_then(|(p, t)| tuning::fret_shift(t, p));
                     let body = json!({
                         "playTuning": play,
                         "tab": tab.map(|t| json!({ "title": t.title, "artist": t.artist, "tuning": t.tuning })),
                         "frets": frets,
+                        "strings": strings,
                     });
                     respond(req, 200, body, cors)
                 }

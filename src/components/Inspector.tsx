@@ -1,7 +1,7 @@
 import { ExternalLink, Star, Trash2 } from 'lucide-react'
 import { forwardRef, useRef, useState, type ReactNode } from 'react'
 import type { Tab, TabInput, TuningPreset } from '@/lib/api'
-import { fretShift, stepLabel } from '@/lib/library'
+import { describeShifts, stringShifts } from '@/lib/library'
 import { cn, fullDate, hostOf } from '@/lib/utils'
 import { TagInput } from './TagInput'
 import { TuningInput } from './TuningInput'
@@ -105,14 +105,15 @@ export const Inspector = forwardRef<HTMLInputElement, Props>(function Inspector(
 
 /** What Tab Transposer will do to this tab, given the tuning set in the sidebar. */
 function ShiftHint({ tuning, playTuning, presets }: { tuning: string; playTuning: string; presets: TuningPreset[] }) {
-  const frets = fretShift(tuning, playTuning, presets)
+  const shifts = stringShifts(tuning, playTuning, presets)
+  const moves = shifts?.some(Boolean) ?? false
   const text =
-    frets == null
-      ? `Can’t be shifted to ${playTuning}: the strings aren’t tuned the same distance apart.`
-      : frets === 0
-        ? `Already in ${playTuning}.`
-        : `Opens ${stepLabel(frets).toLowerCase()} for ${playTuning}.`
-  return <p className={cn('pt-0.5 text-[11px]', frets ? 'text-accent' : 'text-fg-faint')}>{text}</p>
+    shifts == null
+      ? `Can’t be matched to ${playTuning}: the tunings have different strings.`
+      : moves
+        ? `Opens for ${playTuning}: ${describeShifts(shifts)}.`
+        : `Already in ${playTuning}.`
+  return <p className={cn('pt-0.5 text-[11px]', moves ? 'text-accent' : 'text-fg-faint')}>{text}</p>
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
